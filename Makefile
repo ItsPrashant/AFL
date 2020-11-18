@@ -13,6 +13,7 @@
 #   http://www.apache.org/licenses/LICENSE-2.0
 #
 
+AFL_NO_X86 = 0
 PROGNAME    = afl
 VERSION     = $(shell grep '^\#define VERSION ' config.h | cut -d '"' -f2)
 
@@ -32,9 +33,8 @@ CFLAGS     += -Wall -D_FORTIFY_SOURCE=2 -g -Wno-pointer-sign \
 	      -DAFL_PATH=\"$(HELPER_PATH)\" -DDOC_PATH=\"$(DOC_PATH)\" \
 	      -DBIN_PATH=\"$(BIN_PATH)\"
 
-ifneq "$(filter Linux GNU%,$(shell uname))" ""
-  LDFLAGS  += -ldl
-endif
+LDFLAGS  += -ldl
+
 
 ifeq "$(findstring clang, $(shell $(CC) --version 2>/dev/null))" ""
   TEST_CC   = afl-gcc

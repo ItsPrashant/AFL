@@ -168,6 +168,7 @@ static const u8* main_payload_32 =
   "\n"
 
   "__afl_maybe_log:\n"
+  ".global  __afl_maybe_log\n"
   "\n"
   "  lahf\n"
   "  seto %al\n"
@@ -397,7 +398,9 @@ static const u8* main_payload_64 =
   ".align 8\n"
   "\n"
   "__afl_maybe_log:\n"
+  ".global  __afl_maybe_log\n"
   "\n"
+
 #if defined(__OpenBSD__)  || (defined(__FreeBSD__) && (__FreeBSD__ < 9))
   "  .byte 0x9f /* lahf */\n"
 #else
@@ -503,6 +506,12 @@ static const u8* main_payload_64 =
   "  subq  $16, %rsp\n"
   "  andq  $0xfffffffffffffff0, %rsp\n"
   "\n"
+  "  cmpb $0, __afl_restart_check(%rip)\n"
+  "  je __afl_do_shared_memory\n"
+  "  movq __afl_restart_gap(%rip), %rax\n"
+  "  jmp __afl_store_and_fork\n"
+  "\n"
+  "__afl_do_shared_memory:\n"  
   "  leaq .AFL_SHM_ENV(%rip), %rdi\n"
   CALL_L64("getenv")
   "\n"
@@ -516,10 +525,10 @@ static const u8* main_payload_64 =
   "  xorq %rsi, %rsi   /* requested addr */\n"
   "  movq %rax, %rdi   /* SHM ID         */\n"
   CALL_L64("shmat")
-  "\n"
   "  cmpq $-1, %rax\n"
   "  je   __afl_setup_abort\n"
   "\n"
+  "__afl_store_and_fork:\n"  
   "  /* Store the address of the SHM region. */\n"
   "\n"
   "  movq %rax, %rdx\n"
@@ -548,7 +557,7 @@ static const u8* main_payload_64 =
   "\n"
   "  movq $4, %rdx               /* length    */\n"
   "  leaq __afl_temp(%rip), %rsi /* data      */\n"
-  "  movq $" STRINGIFY((FORKSRV_FD + 1)) ", %rdi       /* file desc */\n"
+"  movq $" STRINGIFY((FORKSRV_FD + 1)) ", %rdi       /* file desc */\n"
   CALL_L64("write")
   "\n"
   "  cmpq $4, %rax\n"
@@ -699,24 +708,32 @@ static const u8* main_payload_64 =
   "  .comm   __afl_area_ptr, 8\n"
 #ifndef COVERAGE_ONLY
   "  .comm   __afl_prev_loc, 8\n"
+  "  .global __afl_prev_loc\n"	
 #endif /* !COVERAGE_ONLY */
   "  .comm   __afl_fork_pid, 4\n"
   "  .comm   __afl_temp, 4\n"
-  "  .comm   __afl_setup_failure, 1\n"
+  "  .comm   __afl_setup_failure, 1\n"  
+  "  .global  __afl_setup_failure\n"
 
 #else
 
   "  .lcomm   __afl_area_ptr, 8\n"
 #ifndef COVERAGE_ONLY
   "  .lcomm   __afl_prev_loc, 8\n"
+  "  .global __afl_prev_loc\n"	
 #endif /* !COVERAGE_ONLY */
   "  .lcomm   __afl_fork_pid, 4\n"
   "  .lcomm   __afl_temp, 4\n"
   "  .lcomm   __afl_setup_failure, 1\n"
+  "  .global  __afl_setup_failure\n"
+  "  .lcomm   __afl_restart_check, 1\n"
+  "  .global  __afl_restart_check\n"
 
 #endif /* ^__APPLE__ */
 
   "  .comm    __afl_global_area_ptr, 8, 8\n"
+  "  .comm    __afl_restart_gap, 8, 8\n"
+  "  .global  __afl_restart_gap\n"
   "\n"
   ".AFL_SHM_ENV:\n"
   "  .asciz \"" SHM_ENV_VAR "\"\n"
